@@ -33,5 +33,10 @@
     "README.md",
     "README.zh-CN.md"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrDynasty/dsh-figma-local-mcp.git"
+  },
+  "homepage": "https://github.com/MrDynasty/dsh-figma-local-mcp"
 }

@@ -1,6 +1,6 @@
 {
   "name": "dsh-figma-local-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Global integration with the local Figma Desktop MCP server: tools and design-to-code guidance for every DSH agent preset.",
   "type": "module",
   "main": "lib/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "dsh-figma-local-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Global integration with the local Figma Desktop MCP server: tools and design-to-code guidance for every DSH agent preset.",
   "type": "module",
   "main": "lib/index.js",
@@ -23,9 +23,6 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  },
-  "dependencies": {
-    "@deepseek-ai/dsh-mcp-client": "^0.1.0-rc.7"
   },
   "files": [
     "lib",

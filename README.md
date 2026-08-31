@@ -6,7 +6,7 @@ This plugin does NOT use the Figma REST API and does not need a Figma token. It 
 
 ## Features
 
-- Global `@deepseek-ai/dsh-mcp-client` connection to `http://127.0.0.1:3845/mcp` (auto-reconnect, non-blocking when Figma is closed).
+- Connects the harness-provided `@deepseek-ai/dsh-mcp-client` service to `http://127.0.0.1:3845/mcp` (auto-reconnect, non-blocking when Figma is closed). The client ships with DSH itself — this plugin only configures it through the bundled `cordis.patch.yml` and declares no npm dependency on it, so it always runs against the host's own version.
 - Global routing prompt: any Figma URL, current selection, design-to-code request, or asset-export request routes to the `mcp__figma__*` tools in every agent mode.
 - Global `figma-design-to-code` skill that adapts Figma output to the target repository conventions.
 
@@ -52,6 +52,7 @@ Presets that intentionally restrict their tool set (for example a fixed-tool boo
 
 ## Troubleshooting
 
+- `✕ missing peer @deepseek-ai/...` lines in the `dsh plugin` output are expected. DSH profiles set `autoInstallPeers: false`; host packages such as `@deepseek-ai/cordis`, `@deepseek-ai/dsh-mcp-client`, `dsh-llm`, `dsh-tools`, etc. are provided by the DSH installation itself at runtime through the profile module fallback, so pnpm's peer check reports them as "missing" even though they resolve fine. This is normal for every DSH plugin, including the officially bundled ones.
 - `No session found for sessionId` after restarting Figma Desktop: expected — the MCP session is process-local. Restart the DSH web process (or wait for the bridge reconnect) and retry.
 - `get_design_context` timeouts on first call or on large files: the tool renders code and exports every SVG in-process; if it exceeds the 60 s default `toolCallTimeoutMs`, raise it in the plugin config (`figma-mcp-client.config.toolCallTimeoutMs`, for example 120000).
 

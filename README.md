@@ -1,5 +1,20 @@
 # dsh-figma-local-mcp
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+## 中文简介
+
+为 DeepSeek Harness（DSH）接入 **Figma Desktop 本地 MCP**，让各类 Agent 直接读取设计稿、当前选区、设计变量与资源，并按项目既有规范实现界面。
+
+- **读取设计无需 Token**：启用 Figma Desktop 本地 MCP，并与 DSH 运行在同一台机器上即可使用。
+- **原生 2x / 3x PNG 导出**：可选配置 Figma PAT，资源直接保存到当前任务工作区，不放大截图、不交付临时下载链接。
+- **原生中文设置面板**：左侧栏点击 Figma，管理 Token、查看有效状态与到期提醒；面板跟随 DSH 皮肤。
+- **安全边界**：Token 仅在设置面板输入；导出遵循当前会话沙箱权限。
+
+安装、权限配置、使用示例及常见问题请参阅 **[完整中文文档](README.zh-CN.md)**。
+
+## Overview
+
 Global integration between DSH and the **local Figma Desktop MCP server**, with design-to-code guidance for every agent preset.
 
 Design inspection still uses the local Figma Desktop MCP and needs **no token**. Since 0.2.0, optional **native 2x / 3x PNG exports** use Figma REST with a Personal Access Token configured in a local settings panel. Screenshots are never upscaled to fake higher-resolution exports.
@@ -9,6 +24,8 @@ Design inspection still uses the local Figma Desktop MCP and needs **no token**.
 - Connects the harness-provided `@deepseek-ai/dsh-mcp-client` service to `http://127.0.0.1:3845/mcp` (auto-reconnect, non-blocking when Figma is closed). The client ships with DSH itself — this plugin only configures it through the bundled `cordis.patch.yml` and declares no npm dependency on it, so it always runs against the host's own version.
 - Global routing prompt: any Figma URL, current selection, design-to-code request, or asset-export request routes to the `mcp__figma__*` tools in every agent mode.
 - Global `figma-design-to-code` skill that adapts Figma output to the target repository conventions.
+- Optional native 2x / 3x PNG exports saved directly to the task workspace under the session sandbox policy.
+- Native sidebar settings panel with credential health checks, expiry reminders and live DSH theme support.
 
 ## Requirements
 

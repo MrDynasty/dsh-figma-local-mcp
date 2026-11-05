@@ -1,5 +1,7 @@
 # dsh-figma-local-mcp
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 DSH 与 **Figma Desktop 本地 MCP 服务器** 的全局集成插件，为所有 Agent 预设提供设计稿读取与设计转代码指导。
 
 设计读取继续使用本机 Figma Desktop MCP，**不需要 Token**。从 0.2.0 起，可选的 **2x / 3x PNG 导出**使用 Figma REST API，需要在本机面板配置 Personal Access Token（PAT）；不会把截图放大来冒充高倍率导出。
@@ -9,6 +11,8 @@ DSH 与 **Figma Desktop 本地 MCP 服务器** 的全局集成插件，为所有
 - 连接 DSH 自带的 `@deepseek-ai/dsh-mcp-client` 服务到 `http://127.0.0.1:3845/mcp`（自动重连；Figma 未打开时不阻塞 DSH）。该客户端随 DSH 一同分发——本插件只通过内置的 `cordis.patch.yml` 配置它，不声明任何 npm 依赖，因此始终使用宿主自带的版本。
 - 全局路由提示：任何 Figma 链接、当前选中节点、设计转代码请求、资源导出请求，都会自动路由到 `mcp__figma__*` 工具，适用于所有 Agent 模式。
 - 全局 `figma-design-to-code` Skill：把 Figma 输出适配到目标仓库的既有约定。
+- 可选的原生 2x / 3x PNG 导出：遵循当前会话沙箱权限，直接保存到任务工作区。
+- 原生侧栏设置面板：管理凭据、自动检测有效状态、提示到期，并实时跟随 DSH 皮肤。
 
 ## 环境要求
 

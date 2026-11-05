@@ -1,11 +1,16 @@
 {
   "name": "dsh-figma-local-mcp",
-  "version": "0.1.2",
-  "description": "Global integration with the local Figma Desktop MCP server: tools and design-to-code guidance for every DSH agent preset.",
+  "version": "0.3.2",
+  "description": "Figma Desktop MCP, native 2x/3x PNG exports, and local Token settings with automatic health checks.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check lib/client.js && node --check lib/index.js && node --check lib/plugin.js && node --check lib/figma-api.js && node --check lib/service.js && node --check lib/http.js && node --check lib/download.js && node --check lib/errors.js && node --check lib/panel.js && node --check lib/workspace.js"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
+    "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
   "keywords": [
@@ -17,11 +22,15 @@
     "design-to-code"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": ["@deepseek-ai/dsh-client-ui-layout"],
+      "platform": "web"
     }
   },
   "files": [

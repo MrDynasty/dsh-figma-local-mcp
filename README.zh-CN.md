@@ -2,7 +2,7 @@
 
 DSH 与 **Figma Desktop 本地 MCP 服务器** 的全局集成插件，为所有 Agent 预设提供设计稿读取与设计转代码指导。
 
-本插件**不使用 Figma REST API，也不需要 Figma Token**。它连接 Figma Desktop 在本机暴露的 MCP 服务器，因此可以读取当前打开的文件、当前选中节点，并导出其中的资源。
+设计读取继续使用本机 Figma Desktop MCP，**不需要 Token**。从 0.2.0 起，可选的 **2x / 3x PNG 导出**使用 Figma REST API，需要在本机面板配置 Personal Access Token（PAT）；不会把截图放大来冒充高倍率导出。
 
 ## 功能
 
@@ -49,6 +49,46 @@ dsh plugin --profile web add dsh-figma-local-mcp
 可用工具以 `mcp__figma__get_design_context`、`mcp__figma__get_screenshot`、`mcp__figma__get_metadata`、`mcp__figma__get_variable_defs`、`mcp__figma__get_motion_context`、`mcp__figma__get_figjam` 暴露。
 
 对工具集做主动限制的预设（例如固定工具的锚定引导阶段），只有在自身限制解除后才能看到 Figma 工具。
+
+## 2x / 3x PNG 导出与 Token 设置
+
+1. 升级后**重启 DSH Desktop / Web 宿主**，刷新原有 GUI。仅刷新网页不会加载新的服务端插件；此插件不依赖前端 dev watcher。
+2. 在**左侧侧栏**的页面列表里选择 **Figma**，在中间区域打开设置页；**不再显示右下角悬浮入口**。切回「对话」即可关闭设置页，清空未保存的 Token 输入；已保存凭据保留。面板实时跟随当前 DSH 皮肤的颜色、字体和圆角。这是宿主原生的左侧栏入口，支持 Desktop 和 Web，不打开额外窗口，也不经过隔离浏览器。普通 Web 浏览器仍可在已登录的当前 DSH 地址后加 `/dsh-figma`，独立页面使用系统浅色／深色兜底；此面板只允许本机、已通过 DSH 身份验证的请求。
+3. 到 [Figma 官方设置](https://www.figma.com/settings) 创建 PAT，开启 `file_content:read`（导出）和 `current_user:read`（独立账号健康检查）。在面板中粘贴 Token，点击「验证并保存」。验证失败不会覆盖已有 Token。已有令牌且未明确失效／到期时，默认隐藏新增表单；点击「增加令牌」展开，「取消」收起且不修改已有凭据。缺失或明确失效／到期时自动显示表单；网络、限流和权限错误不会被当作到期。
+4. 可填写创建 PAT 时选择的到期时间；留空表示**精确到期时间未知**。Figma 没有公开的 PAT 到期时间查询接口，不能按保存时间加 90 天推算。新 PAT 最长 90 天，但可以更短或提前撤销。
+5. 配置一次后，在对话中给出具体节点的文件／分支链接（必须含 `node-id`）。Agent 做设计实现时，会在**当前任务内自动导出所需位图的 2x、3x 并保存到工作区**，不是让你再点下载。面板中仍保留可选的手动节点导出／下载界面。
+
+对话工具 `figma_export_images` 接受 `{url, scales:[2,3], outputDir:"assets/figma"}`，默认导出两种倍率。每次在项目资源目录内新建独占 `export-UUID` 子目录，不覆盖已有文件；返回永久本地路径、实际尺寸、字节数及 SHA-256，Agent 应直接使用这些文件。保存必须通过**当前会话的沙箱权限**；只读会话、越界目录、缺少宿主能力会明确失败，不绕过权限或降级为手动下载。取消或保存失败可能留下部分文件，但不会报告完整交付。
+
+`figma_token_status` 只查看状态；设置仍由原生侧边栏面板完成。**不要把 Token 发进聊天**；工具不接受设置 Token 参数。单次最多 10 个同文件节点，链接的 `node-id` 可用逗号分隔；面板输入单个节点。
+
+### 自动检测规则
+
+- 启动时、保存候选 Token 时、后台每 **6 小时**、手动检查时、每次导出前调用低成本的 `/v1/me` 验证；不会用图片渲染接口轮询健康状态。面板可见时每 **60 秒**读取本机状态，不额外调用 Figma。
+- 用户填写的到期时间到达后显示「已到期」；有效 Token 在到期前 **7 天**提示「即将到期」。没有填写时显示「到期未知」，仍能通过 API 检测失效。
+- 明确的认证拒绝显示「无效或已到期」，无法可靠区分撤销、错误 Token 和过期。普通 403 显示权限不足；网络错误、5xx 和 429 分别显示网络异常／请求受限，保留凭据及最近有效时间，**不误报过期**。
+- `/v1/me` 需要 `current_user:read`。只有导出 scope 的 Token 可能健康检查失败，这不证明过期。`file_content:read` 也不会绕过文件分享或组织访问限制。
+- PAT 不能自动续期；失效后需在 Figma 创建新 Token，并在面板替换。
+
+### 数据与导出边界
+
+- Token 及可选到期元数据存入 **DSH 官方凭据记录服务**，不写入插件 YAML、源码、浏览器存储、工具结果或日志。当前宿主的本地凭据后端使用权限受限的文件，**不等同于系统钥匙串加密**；应保护 DSH Profile 及备份。面板不会回显 Token，支持移除。
+- Token 只发送到固定 HTTPS `api.figma.com`；禁止 API 重定向。图片下载不携带 Token／Cookie，只接受安全列表中的 Figma 已知图片域名，禁止重定向并校验 DNS、PNG 头部和响应大小。若 Figma 更换图片域名，会明确拒绝而不是开放任意域名。
+- REST 导出使用**云端已保存版本**，可能与 Desktop 未保存修改不同。只有当前选中节点不足以确定 REST 文件 key，需提供链接，不猜测。
+- Figma 最大 **3200 万像素**；超限批次会拒绝，防止静默降采样。若实际 PNG 尺寸与预期不符，明确提示，绝不再放大补偿。导出额度受账号、席位及计划限制，2x、3x 分别占用渲染请求。
+- 对话工具会把 PNG 保存到当前任务工作区，**已保存文件不受临时链接过期影响**。下载阶段总缓存上限 **100 MB**、单文件上限 **50 MB**。面板手动下载链接仅在宿主内存保留 **10 分钟**，关闭宿主、移除或替换 Token 后失效；批次失败不会返回部分成功结果。
+
+开发验证（不需要真实 Token）：
+
+```sh
+npm test
+npm run check
+npm pack --dry-run
+```
+
+本地未发布版本可先 `npm pack`，再通过 DSH 插件管理器安装生成的本地 tarball；不要用注册表旧版代替本地升级。没有真实 PAT 和目标文件时，自动测试只能验证模拟响应，不能证明真实账号的导出权限、额度或图片域名兼容。
+
+官方依据：[PAT](https://developers.figma.com/docs/rest-api/personal-access-tokens/)、[用户接口](https://developers.figma.com/docs/rest-api/users-endpoints/)、[文件／导出接口](https://developers.figma.com/docs/rest-api/file-endpoints/)、[权限](https://developers.figma.com/docs/rest-api/scopes/)、[错误分类](https://developers.figma.com/docs/rest-api/errors/)、[限额](https://developers.figma.com/docs/rest-api/rate-limits/)。
 
 ## 常见问题
 

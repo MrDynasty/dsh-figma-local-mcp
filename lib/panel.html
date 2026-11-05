@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Figma · DSH 集成设置</title>
+  <link rel="stylesheet" href="/dsh-figma/panel.css">
+  <script src="/dsh-figma/panel.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到设置</a>
+  <div class="shell">
+    <header class="topbar"><span class="wordmark">dsh<span class="accent">.</span></span><span class="divider">/</span><span>集成设置</span><span class="local-tag">本地工作区</span></header>
+    <main id="main">
+      <div class="page-heading"><div><p class="eyebrow">FIGMA / LOCAL MCP</p><h1>Figma 连接与导出</h1><p class="intro">管理访问令牌，按节点链接导出设计资源。</p></div><span class="figma-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
+      <section class="connection" aria-labelledby="connection-title">
+        <div class="connection-top"><h2 id="connection-title">连接状态</h2><span id="status-label" class="status-badge" data-state="unknown">正在读取</span></div>
+        <p id="status-message" class="status-message">正在读取本地配置…</p>
+        <dl class="status-grid"><div><dt>最近检查</dt><dd id="checked-at">—</dd></div><div><dt>最近有效</dt><dd id="last-valid-at">—</dd></div><div><dt>到期时间</dt><dd id="expiry-value">未知</dd></div></dl>
+        <div class="connection-footer"><p>保存时、手动检查、后台每 6 小时及导出时检查令牌。</p><button type="button" id="check-button" class="button subtle" disabled>立即检查</button></div>
+      </section>
+      <p id="notice" class="notice" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+      <div class="workspace-grid">
+        <section class="panel" aria-labelledby="token-title">
+          <div class="section-heading"><span class="step">01</span><h2 id="token-title">访问令牌</h2></div>
+          <p class="section-description">使用 Figma Personal Access Token（PAT）。已有令牌不会回显。</p>
+          <div class="form-actions"><button type="button" id="add-token-button" class="button subtle" aria-expanded="false" aria-controls="token-editor" hidden disabled>增加令牌</button><button type="button" id="remove-button" class="button danger" disabled>移除令牌</button></div>
+          <div id="token-editor" hidden>
+          <form id="token-form" autocomplete="off">
+            <label for="token">个人访问令牌</label>
+            <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" required aria-describedby="token-help" placeholder="粘贴 Figma PAT">
+            <p id="token-help" class="field-help">仅验证通过后保存；新令牌验证失败时保留原令牌。输入内容不会存入浏览器存储。</p>
+            <label for="expires-at">到期时间 <span class="optional">可选 · 本地时间</span></label>
+            <input id="expires-at" name="expiresAt" type="datetime-local" aria-describedby="expiry-help">
+            <p id="expiry-help" class="field-help">Figma 无法查询令牌的精确到期时间。请填写创建 PAT 时选择的日期；留空则显示为未知。</p>
+            <div class="form-actions"><button type="submit" id="save-button" class="button primary">验证并保存</button><button type="button" id="cancel-token-button" class="button subtle" hidden>取消</button></div>
+          </form>
+          <details class="setup-guide"><summary>如何创建令牌？</summary><ol><li>打开 <a href="https://www.figma.com/settings" target="_blank" rel="noopener noreferrer">Figma 官方设置 <span aria-hidden="true">↗</span></a>，创建 Personal Access Token。</li><li>开启两个只读权限：<code>current_user:read</code> 与 <code>file_content:read</code>。</li><li>复制令牌并记录到期日期，然后在这里验证并保存。</li></ol></details>
+          </div>
+        </section>
+        <section class="panel export-panel" aria-labelledby="export-title">
+          <div class="section-heading"><span class="step">02</span><h2 id="export-title">导出节点</h2><span class="format-tag">PNG</span></div>
+          <p class="section-description">粘贴具体节点的 Figma 文件或分支链接，不读取当前选中项。</p>
+          <form id="export-form">
+            <fieldset id="export-fields" disabled>
+              <label for="figma-url">节点链接</label>
+              <input id="figma-url" name="url" type="url" autocomplete="off" spellcheck="false" required aria-describedby="url-help" placeholder="https://www.figma.com/design/…?node-id=…">
+              <p id="url-help" class="field-help">在 Figma 中选中节点，复制链接。链接必须包含 <code>node-id</code>。</p>
+              <fieldset class="scale-field"><legend>导出倍率</legend><div class="scale-options"><label class="scale-option" for="scale-2"><input id="scale-2" name="scales" type="checkbox" value="2" checked><span>2×</span><span class="scale-caption">双倍像素</span></label><label class="scale-option" for="scale-3"><input id="scale-3" name="scales" type="checkbox" value="3" checked><span>3×</span><span class="scale-caption">三倍像素</span></label></div></fieldset>
+              <button type="submit" id="export-button" class="button primary export-button" disabled>导出 PNG <span aria-hidden="true">↓</span></button>
+            </fieldset>
+          </form>
+          <p id="export-availability" class="field-help">请先配置有效的访问令牌。</p>
+          <div class="source-note"><span class="note-symbol" aria-hidden="true">i</span><p>导出使用 Figma 云端已保存的版本，可能与 Desktop 中未保存的修改不同。输出尺寸以实际文件像素为准。</p></div>
+          <div class="result-heading"><h3>导出结果</h3><span>实际像素尺寸</span></div>
+          <div id="export-results" class="export-results" aria-live="polite" aria-relevant="additions text"><p class="empty-state">尚无导出文件。选择倍率后，点击「导出 PNG」。</p></div>
+        </section>
+      </div>
+      <footer class="page-footer"><span>DSH × FIGMA</span><p>此页面每 60 秒刷新状态，仅在页面可见时刷新。</p></footer>
+      <noscript><p class="notice">请启用 JavaScript 以管理连接和导出资源。</p></noscript>
+    </main>
+  </div>
+</body>
+</html>

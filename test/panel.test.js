@@ -44,6 +44,7 @@ async function boot(responder = () => ({ body: status() })) {
     },
   }
   vm.runInNewContext(source, context, { filename: 'panel.js' })
+  for (const id of ['scale-1', 'scale-4']) doc.getElementById(id).checked = false
   await tick()
   return { nodes, node: doc.getElementById, doc, win, calls, intervals }
 }

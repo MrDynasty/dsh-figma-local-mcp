@@ -1,10 +1,10 @@
 {
   "name": "dsh-figma-local-mcp",
-  "version": "0.3.2",
-  "description": "Figma Desktop MCP, native 2x/3x PNG exports, and local Token settings with automatic health checks.",
+  "version": "0.3.3",
+  "description": "Figma Desktop MCP, native PNG/SVG/PDF exports, credential audit trail, and local Token settings with automatic health checks.",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check lib/client.js && node --check lib/index.js && node --check lib/plugin.js && node --check lib/figma-api.js && node --check lib/service.js && node --check lib/http.js && node --check lib/download.js && node --check lib/errors.js && node --check lib/panel.js && node --check lib/workspace.js"
+    "check": "node --check lib/client.js && node --check lib/index.js && node --check lib/plugin.js && node --check lib/figma-api.js && node --check lib/service.js && node --check lib/http.js && node --check lib/download.js && node --check lib/errors.js && node --check lib/audit.js && node --check lib/panel.js && node --check lib/workspace.js"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -35,6 +35,7 @@
   },
   "files": [
     "lib",
+    "references",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md"

@@ -18,8 +18,13 @@
       <section class="connection" aria-labelledby="connection-title">
         <div class="connection-top"><h2 id="connection-title">连接状态</h2><span id="status-label" class="status-badge" data-state="unknown">正在读取</span></div>
         <p id="status-message" class="status-message">正在读取本地配置…</p>
-        <dl class="status-grid"><div><dt>最近检查</dt><dd id="checked-at">—</dd></div><div><dt>最近有效</dt><dd id="last-valid-at">—</dd></div><div><dt>到期时间</dt><dd id="expiry-value">未知</dd></div></dl>
-        <div class="connection-footer"><p>保存时、手动检查、后台每 6 小时及导出时检查令牌。</p><button type="button" id="check-button" class="button subtle" disabled>立即检查</button></div>
+        <dl class="status-grid"><div><dt>最近检查</dt><dd id="checked-at">—</dd></div><div><dt>最近有效</dt><dd id="last-valid-at">—</dd></div><div><dt>保存于</dt><dd id="saved-at">—</dd></div><div><dt>到期时间</dt><dd id="expiry-value">未知</dd></div></dl>
+        <div class="connection-footer"><p>保存时、手动检查、后台每 6 小时及导出时检查令牌。</p><div class="connection-actions"><button type="button" id="renew-button" class="button subtle" hidden disabled>立即更换</button><button type="button" id="check-button" class="button subtle" disabled>立即检查</button></div></div>
+        <div id="audit-block" class="audit-block" hidden>
+          <h3>最近变更</h3>
+          <ul id="audit-list" class="audit-list"></ul>
+          <p class="field-help">只记录时间、动作、来源与令牌指纹（SHA-256 前 8 位），永不记录令牌内容。</p>
+        </div>
       </section>
       <p id="notice" class="notice" role="status" aria-live="polite" aria-atomic="true" hidden></p>
       <div class="workspace-grid">
@@ -41,21 +46,30 @@
           </div>
         </section>
         <section class="panel export-panel" aria-labelledby="export-title">
-          <div class="section-heading"><span class="step">02</span><h2 id="export-title">导出节点</h2><span class="format-tag">PNG</span></div>
+          <div class="section-heading"><span class="step">02</span><h2 id="export-title">导出节点</h2><span id="format-tag" class="format-tag">PNG</span></div>
           <p class="section-description">粘贴具体节点的 Figma 文件或分支链接，不读取当前选中项。</p>
           <form id="export-form">
             <fieldset id="export-fields" disabled>
               <label for="figma-url">节点链接</label>
               <input id="figma-url" name="url" type="url" autocomplete="off" spellcheck="false" required aria-describedby="url-help" placeholder="https://www.figma.com/design/…?node-id=…">
               <p id="url-help" class="field-help">在 Figma 中选中节点，复制链接。链接必须包含 <code>node-id</code>。</p>
-              <fieldset class="scale-field"><legend>导出倍率</legend><div class="scale-options"><label class="scale-option" for="scale-2"><input id="scale-2" name="scales" type="checkbox" value="2" checked><span>2×</span><span class="scale-caption">双倍像素</span></label><label class="scale-option" for="scale-3"><input id="scale-3" name="scales" type="checkbox" value="3" checked><span>3×</span><span class="scale-caption">三倍像素</span></label></div></fieldset>
-              <button type="submit" id="export-button" class="button primary export-button" disabled>导出 PNG <span aria-hidden="true">↓</span></button>
+              <div class="format-field">
+                <label for="export-format">输出格式</label>
+                <select id="export-format" name="format" aria-describedby="format-help">
+                  <option value="png" selected>PNG · 位图</option>
+                  <option value="svg">SVG · 矢量</option>
+                  <option value="pdf">PDF · 矢量</option>
+                </select>
+                <p id="format-help" class="field-help">PNG 按所选倍率输出真实像素；SVG / PDF 为矢量结果，忽略倍率。</p>
+              </div>
+              <fieldset id="scale-field" class="scale-field"><legend>导出倍率</legend><div class="scale-options"><label class="scale-option" for="scale-1"><input id="scale-1" name="scales" type="checkbox" value="1"><span>1×</span><span class="scale-caption">原始像素</span></label><label class="scale-option" for="scale-2"><input id="scale-2" name="scales" type="checkbox" value="2" checked><span>2×</span><span class="scale-caption">双倍像素</span></label><label class="scale-option" for="scale-3"><input id="scale-3" name="scales" type="checkbox" value="3" checked><span>3×</span><span class="scale-caption">三倍像素</span></label><label class="scale-option" for="scale-4"><input id="scale-4" name="scales" type="checkbox" value="4"><span>4×</span><span class="scale-caption">四倍像素</span></label></div></fieldset>
+              <button type="submit" id="export-button" class="button primary export-button" disabled>导出 PNG</button>
             </fieldset>
           </form>
           <p id="export-availability" class="field-help">请先配置有效的访问令牌。</p>
           <div class="source-note"><span class="note-symbol" aria-hidden="true">i</span><p>导出使用 Figma 云端已保存的版本，可能与 Desktop 中未保存的修改不同。输出尺寸以实际文件像素为准。</p></div>
           <div class="result-heading"><h3>导出结果</h3><span>实际像素尺寸</span></div>
-          <div id="export-results" class="export-results" aria-live="polite" aria-relevant="additions text"><p class="empty-state">尚无导出文件。选择倍率后，点击「导出 PNG」。</p></div>
+          <div id="export-results" class="export-results" aria-live="polite" aria-relevant="additions text"><p class="empty-state">尚无导出文件。选择格式与倍率后，点击「导出」。</p></div>
         </section>
       </div>
       <footer class="page-footer"><span>DSH × FIGMA</span><p>此页面每 60 秒刷新状态，仅在页面可见时刷新。</p></footer>

@@ -2,25 +2,27 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createService } from '../lib/service.js'
 import { parseTarget, FigmaApi } from '../lib/figma-api.js'
+import { fingerprintToken } from '../lib/audit.js'
 
 const SECRET = 'figd_FAKE_TEST_TOKEN_NOT_A_REAL_SECRET'
 const url = 'https://www.figma.com/design/AbC123/Test?node-id=12-34'
 const png = (width = 200, height = 100) => { const b = Buffer.alloc(33); Buffer.from('89504e470d0a1a0a', 'hex').copy(b); b.writeUInt32BE(13, 8); b.write('IHDR', 12); b.writeUInt32BE(width, 16); b.writeUInt32BE(height, 20); return b }
-function setup() {
+function setup(audit) {
   let stored, clock = Date.parse('2026-01-01T00:00:00Z')
   const requests = []
   let me = () => Response.json({ id: 'test-user' })
   let render = () => Response.json({ images: { '12:34': 'https://s3-alpha.figma.com/export.png?signature=fake' } })
+  let asset = () => new Response(png())
   const fetch = async (input, options = {}) => {
     requests.push({ url: String(input), options })
     if (String(input).endsWith('/me')) return me()
     if (String(input).includes('/nodes?')) return Response.json({ nodes: { '12:34': { document: { absoluteBoundingBox: { width: 100, height: 50 }, absoluteRenderBounds: { width: 100, height: 50 } } } } })
     if (String(input).includes('/images/')) return render()
-    return new Response(png())
+    return asset()
   }
   const store = { read: async () => stored, write: async (v) => { stored = v }, remove: async () => { stored = undefined } }
-  const service = createService({ store, api: new FigmaApi({ fetch }), now: () => clock })
-  return { service, requests, stored: () => stored, setMe: (v) => { me = v }, setRender: (v) => { render = v }, advance: (ms) => { clock += ms } }
+  const service = createService({ store, api: new FigmaApi({ fetch }), now: () => clock, audit })
+  return { service, requests, stored: () => stored, setMe: (v) => { me = v }, setRender: (v) => { render = v }, setAsset: (v) => { asset = v }, advance: (ms) => { clock += ms } }
 }
 
 test('parses canonical file and branch targets, normalizes node ids', () => {
@@ -94,6 +96,87 @@ test('bounded and validated inputs reject before requests', async () => {
   for (const token of ['', 'x\nHeader:bad', 'x'.repeat(2049)]) await assert.rejects(s.service.save({ token }))
   await assert.rejects(s.service.save({ token: SECRET, expiresAt: 'yesterday' }))
   await s.service.save({ token: SECRET }); const n = s.requests.length
-  for (const scales of [[1], [4], [], [2, 2], [2, 3, 3]]) await assert.rejects(s.service.export({ url, scales }))
+  for (const scales of [[0], [5], [], [2, 2], [2, 3, 3], [1, 2, 3, 4]]) await assert.rejects(s.service.export({ url, scales }))
+  await assert.rejects(s.service.export({ url, scales: [2], format: 'jpg' }), { code: 'invalid_format' })
   assert.equal(s.requests.length, n)
+})
+
+function recorder() {
+  const entries = []
+  return {
+    entries,
+    record: (action, detail = {}) => { entries.push({ action, ...detail }); return Promise.resolve() },
+    tail: async () => entries.slice(-5),
+  }
+}
+
+test('credential saves and removals are audited without token material', async () => {
+  const audit = recorder(); const s = setup(audit)
+  const saved = await s.service.save({ token: SECRET }, { actor: 'panel' })
+  assert.match(saved.savedAt, /^\d{4}-\d{2}-\d{2}T/)
+  assert.deepEqual(audit.entries.at(-1), { action: 'save', actor: 'panel', fingerprint: fingerprintToken(SECRET), expiresAt: null, state: 'valid' })
+  assert.ok(!JSON.stringify(audit.entries).includes(SECRET))
+  const status = await s.service.status()
+  assert.equal(status.savedAt, saved.savedAt); assert.deepEqual(status.audit, audit.entries.slice(-5))
+  const removed = await s.service.remove({ actor: 'panel' })
+  assert.equal(removed.configured, false)
+  assert.deepEqual(audit.entries.at(-1), { action: 'remove', actor: 'panel', fingerprint: fingerprintToken(SECRET), expiresAt: null })
+})
+
+test('repeated background failures are audited once, recovery closes the window', async () => {
+  const audit = recorder(); const s = setup(audit)
+  await s.service.save({ token: SECRET }, { actor: 'tool' })
+  s.setMe(() => Response.json({}, { status: 401 }))
+  await s.service.check({ actor: 'background' }); await s.service.check({ actor: 'background' })
+  assert.equal(audit.entries.filter((e) => e.action === 'check-fail').length, 1)
+  s.setMe(() => Response.json({ id: 'test-user' }))
+  await s.service.check({ actor: 'background' })
+  const closed = audit.entries.filter((e) => e.action === 'check-ok')
+  assert.equal(closed.length, 1); assert.equal(closed[0].state, 'valid')
+})
+
+test('savedAt survives reloads and legacy records render without inventing one', async () => {
+  const s = setup(); const saved = await s.service.save({ token: SECRET })
+  const again = setup(); await again.service.save({ token: SECRET })
+  assert.equal((await again.service.status()).savedAt, again.stored().savedAt)
+  const legacy = setup(); await legacy.service.save({ token: SECRET })
+  delete legacy.stored().savedAt
+  const status = await legacy.service.status()
+  assert.equal(status.savedAt, null)
+  assert.match(status.message, /尚未验证|验证通过/)
+  assert.ok(saved.savedAt)
+})
+
+test('vector formats ignore scales and keep their own content type', async () => {
+  const s = setup(); await s.service.save({ token: SECRET })
+  s.setAsset(() => new Response('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'))
+  const result = await s.service.export({ url, format: 'svg', scales: [3, 1] })
+  const renderCall = s.requests.find((r) => r.url.includes('/images/'))
+  const params = new URL(renderCall.url).searchParams
+  assert.equal(params.get('format'), 'svg'); assert.equal(params.get('scale'), null)
+  assert.equal(result.files.length, 1); assert.equal(result.files[0].filename, 'figma-12-34.svg')
+  assert.equal(result.files[0].width, null); assert.equal(result.files[0].format, 'svg')
+  assert.equal(s.service.download(result.files[0].id).contentType, 'image/svg+xml')
+  s.setAsset(() => new Response('<html>nope</html>'))
+  await assert.rejects(s.service.export({ url, format: 'svg' }), { code: 'invalid_asset' })
+})
+
+test('pdf exports verify their magic bytes and skip bitmap invariants', async () => {
+  const s = setup(); await s.service.save({ token: SECRET })
+  s.setAsset(() => new Response('%PDF-1.7 fake'))
+  const result = await s.service.export({ url, format: 'pdf' })
+  assert.equal(result.files[0].filename, 'figma-12-34.pdf'); assert.equal(result.files[0].height, null)
+  assert.equal(s.service.download(result.files[0].id).contentType, 'application/pdf')
+  s.setAsset(() => new Response('not a pdf at all'))
+  await assert.rejects(s.service.export({ url, format: 'pdf' }), { code: 'invalid_asset' })
+})
+
+test('png honours every allowed scale while vectors collapse to one file', async () => {
+  const s = setup(); await s.service.save({ token: SECRET })
+  const pngResult = await s.service.export({ url, scales: [1, 2, 3], format: 'png' })
+  assert.deepEqual(pngResult.files.map((file) => file.filename), ['figma-12-34@1x.png', 'figma-12-34@2x.png', 'figma-12-34@3x.png'])
+  s.setAsset(() => new Response('<svg xmlns="http://www.w3.org/2000/svg"/>'))
+  const vector = await s.service.export({ url, scales: [1, 2, 3], format: 'svg' })
+  assert.equal(vector.files.length, 1)
+  assert.equal(s.requests.filter((r) => r.url.includes('/images/')).length, 4)
 })
